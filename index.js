@@ -183,152 +183,30 @@ async function addRowToDatabase(databaseId, storeName, totalCost) {
 }
 
 /**
- * Create a child page with todo list, table, and include week info in the title
- * @param {string} parentId - ID of the parent page
- * @param {string} pageName - Base name of the child page to create
- * @param {Array} todoItems - Array of todo items
- * @param {string} weekDate - ISO date string for the week
- */
-async function createWeeklyChildPage(
-  parentId,
-  pageName,
-  todoItems = [],
-  weekDate
-) {
-  try {
-    // Get week number of month from the date
-    const date = new Date(weekDate);
-    const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
-    const weekOfMonth = Math.ceil(
-      (date.getDate() + firstDayOfMonth.getDay()) / 7
-    );
-
-    // Get month name
-    const months = [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
-    ];
-    const monthName = months[date.getMonth()];
-
-    // Create full page name with week and month
-    const fullPageName = `${pageName} (${monthName} Week ${weekOfMonth})`;
-
-    // Create the child page
-    const childPageResponse = await notion.pages.create({
-      parent: {
-        type: "page_id",
-        page_id: parentId,
-      },
-      properties: {
-        title: {
-          title: [
-            {
-              text: {
-                content: fullPageName,
-              },
-            },
-          ],
-        },
-      },
-      children: [
-        // Add a date paragraph
-        {
-          object: "block",
-          type: "paragraph",
-          paragraph: {
-            rich_text: [
-              {
-                type: "text",
-                text: {
-                  content: `Week Date: ${weekDate}`,
-                },
-                annotations: {
-                  bold: true,
-                },
-              },
-            ],
-          },
-        },
-        // Heading for Todo List
-        {
-          object: "block",
-          type: "heading_2",
-          heading_2: {
-            rich_text: [{ type: "text", text: { content: "Tasks" } }],
-          },
-        },
-        // Todo list items
-        ...todoItems.map((item) => ({
-          object: "block",
-          type: "to_do",
-          to_do: {
-            rich_text: [{ type: "text", text: { content: item } }],
-            checked: false,
-          },
-        })),
-        // Spacer
-        {
-          object: "block",
-          type: "paragraph",
-          paragraph: {
-            rich_text: [],
-          },
-        },
-      ],
-    });
-
-    console.log(`Created child page: ${fullPageName}`);
-
-    // Get the ID of the newly created child page
-    const childPageId = childPageResponse.id;
-
-    // Create table database within the child page
-    await createTableDatabase(childPageId, fullPageName);
-
-    return childPageId;
-  } catch (error) {
-    console.error(`Error creating child page:`, error.body || error);
-  }
-}
-
-/**
- * Create weekly grocery pages with current week information
+ * Create weekly grocery pages with static names
  */
 async function createWeeklyGroceryPages(parentId) {
   try {
-    // Get current date info
-    const now = new Date();
-
-    // Create three weekly grocery pages in parallel
-    const weeklyPages = [0, 1, 2].map((weekOffset) => {
-      // Clone the date and add offset weeks
-      const targetDate = new Date(now);
-      targetDate.setDate(now.getDate() + weekOffset * 7);
-
-      // Format date for Notion's date property
-      const formattedDate = targetDate.toISOString().split("T")[0];
-
-      return {
-        name: `Grocery Shopping - Week ${weekOffset + 1}`,
-        items: ["milk", "eggs", "bread"], // Default items
-        date: formattedDate,
-      };
-    });
+    // Define the weekly pages with static names
+    const weeklyPages = [
+      {
+        name: "Grocery Shopping - Week 1",
+        items: ["milk", "eggs", "bread"],
+      },
+      {
+        name: "Grocery Shopping - Week 2",
+        items: ["chicken", "rice", "vegetables"],
+      },
+      {
+        name: "Grocery Shopping - Week 3",
+        items: ["pasta", "cheese", "tomatoes"],
+      },
+    ];
 
     // Create pages with Promise.all
     const groceryPageIds = await Promise.all(
       weeklyPages.map((page) =>
-        createWeeklyChildPage(parentId, page.name, page.items, page.date)
+        createChildPage(parentId, page.name, page.items)
       )
     );
 
@@ -344,7 +222,7 @@ async function createWeeklyGroceryPages(parentId) {
  */
 async function createStructure() {
   try {
-    // Create weekly grocery pages with auto-dated titles
+    // Create weekly grocery pages with static names
     await createWeeklyGroceryPages(parentPageId);
 
     console.log("Structure creation completed!");
